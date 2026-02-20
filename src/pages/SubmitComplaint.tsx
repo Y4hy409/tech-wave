@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
-import { ArrowLeft, Mic, Paperclip, Zap, CheckCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, Mic, Zap, CheckCircle, Loader2, ImagePlus } from "lucide-react";
+import { queueOfflineComplaint, syncPendingComplaints } from "@/lib/offlineSync";
+import { readSessionUser } from "@/lib/userProfile";
 
 const categories = [
   { label: "Plumbing", icon: "🔧", keywords: ["water", "leak", "pipe", "drain", "tap"] },
@@ -38,6 +40,8 @@ function detectPriority(text: string): string {
 
 export default function SubmitComplaint() {
   const navigate = useNavigate();
+  const sessionUser = readSessionUser();
+  const displayName = sessionUser?.name || "Priya Sharma";
   const [step, setStep] = useState<"form" | "analyzing" | "review" | "success">("form");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -46,6 +50,23 @@ export default function SubmitComplaint() {
   const [aiCategory, setAiCategory] = useState("");
   const [aiPriority, setAiPriority] = useState("");
   const [isDuplicate, setIsDuplicate] = useState(false);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const apartmentId = "APT1";
+  const residentId =
+    sessionUser?.name?.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "resident-demo-1";
+
+  useEffect(() => {
+    const syncWhenOnline = () => {
+      void syncPendingComplaints();
+    };
+    window.addEventListener("online", syncWhenOnline);
+    if (navigator.onLine) {
+      void syncPendingComplaints();
+    }
+    return () => {
+      window.removeEventListener("online", syncWhenOnline);
+    };
+  }, []);
 
   const handleAnalyze = () => {
     if (!title || !description) return;
@@ -60,19 +81,53 @@ export default function SubmitComplaint() {
       const dupe = title.toLowerCase().includes("water") || title.toLowerCase().includes("elevator");
       setIsDuplicate(dupe);
       setStep("review");
-    }, 2200);
+    }, 600);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setStep("analyzing");
-    setTimeout(() => setStep("success"), 1200);
+    const payload = {
+      apartment_id: apartmentId,
+      resident_id: residentId,
+      title,
+      description,
+      is_synced: navigator.onLine,
+    };
+
+    if (!navigator.onLine) {
+      await queueOfflineComplaint(payload);
+      setTimeout(() => setStep("success"), 600);
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("apartment_id", apartmentId);
+      formData.append("resident_id", residentId);
+      formData.append("title", title);
+      formData.append("description", description);
+      formData.append("is_synced", "true");
+      attachments.forEach((file) => formData.append("images", file));
+
+      const response = await fetch("/complaints/with-media", {
+        method: "POST",
+        body: formData,
+      });
+      if (!response.ok) {
+        throw new Error("Complaint submit failed");
+      }
+      setStep("success");
+    } catch {
+      await queueOfflineComplaint({ ...payload, is_synced: false });
+      setStep("success");
+    }
   };
 
   const ticketId = "FX-" + Math.floor(2400 + Math.random() * 100);
 
   if (step === "success") {
     return (
-      <AppLayout role="resident" userName="Priya Sharma">
+      <AppLayout role="resident" userName={displayName}>
         <div className="flex items-center justify-center min-h-screen p-8">
           <div className="text-center max-w-md animate-slide-up">
             <div className="w-20 h-20 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -108,7 +163,7 @@ export default function SubmitComplaint() {
   }
 
   return (
-    <AppLayout role="resident" userName="Priya Sharma">
+    <AppLayout role="resident" userName={displayName}>
       <div className="max-w-2xl mx-auto p-6 lg:p-8 animate-fade-in">
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">
@@ -175,10 +230,23 @@ export default function SubmitComplaint() {
             </div>
 
             {/* Attachment */}
-            <div className="border-2 border-dashed border-border rounded-xl p-5 text-center">
-              <Paperclip className="w-5 h-5 text-muted-foreground mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">Attach photo or video (optional)</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Max 10MB</p>
+            <div className="border-2 border-dashed border-border rounded-xl p-5 text-center space-y-2">
+              <ImagePlus className="w-5 h-5 text-muted-foreground mx-auto" />
+              <p className="text-sm text-muted-foreground">Add complaint images from gallery (optional)</p>
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={(event) => {
+                  const files = Array.from(event.target.files || []).slice(0, 5);
+                  setAttachments(files);
+                }}
+                className="mx-auto block text-xs text-muted-foreground"
+              />
+              <p className="text-xs text-muted-foreground">Up to 5 images</p>
+              {attachments.length > 0 && (
+                <p className="text-xs text-foreground">{attachments.length} image(s) selected</p>
+              )}
             </div>
 
             <button

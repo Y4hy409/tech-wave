@@ -1,15 +1,13 @@
-import { ReactNode, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import {
-  Home, PlusCircle, FileText, Bell, LogOut, LayoutDashboard, Users, BarChart3, Settings, ClipboardList,
-  Menu, ChevronDown
-} from "lucide-react";
+import { ReactNode, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { BarChart3, FileText, LayoutDashboard, LogOut, Menu, PlusCircle, UserCircle2 } from "lucide-react";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 interface NavItem {
-  icon: React.ElementType;
   label: string;
   tab?: string;
   path?: string;
+  icon: React.ElementType;
 }
 
 interface AppLayoutProps {
@@ -20,161 +18,113 @@ interface AppLayoutProps {
   onTabChange?: (tab: string) => void;
 }
 
-const residentNav: NavItem[] = [
-  { icon: Home, label: "Dashboard", tab: "dashboard" },
-  { icon: PlusCircle, label: "New Complaint", path: "/submit" },
-  { icon: FileText, label: "My Tickets", tab: "tickets" },
-  { icon: Bell, label: "Notifications", tab: "notifications" },
-];
-
-const adminNav: NavItem[] = [
-  { icon: LayoutDashboard, label: "Dashboard", tab: "dashboard" },
-  { icon: FileText, label: "All Tickets", tab: "tickets" },
-  { icon: Users, label: "Staff", tab: "staff" },
-  { icon: BarChart3, label: "Analytics", tab: "analytics" },
-  { icon: Settings, label: "Settings", tab: "settings" },
-];
-
-const staffNav: NavItem[] = [
-  { icon: Home, label: "Dashboard", tab: "dashboard" },
-  { icon: ClipboardList, label: "My Tasks", tab: "tasks" },
-  { icon: FileText, label: "History", tab: "history" },
-];
-
 export function AppLayout({ children, role, userName = "User", activeTab, onTabChange }: AppLayoutProps) {
   const navigate = useNavigate();
-  const navItems = role === "resident" ? residentNav : role === "admin" ? adminNav : staffNav;
-  const [menuOpen, setMenuOpen] = useState(false);
+  const location = useLocation();
+  const [open, setOpen] = useState(false);
 
-  const roleLabel = role === "resident" ? "Resident" : role === "admin" ? "Admin" : "Staff";
-  const roleColors = {
-    resident: "bg-blue-600",
-    admin: "bg-orange-500",
-    staff: "bg-emerald-600",
-  };
+  const navItems = useMemo<NavItem[]>(() => {
+    if (role === "resident") {
+      return [
+        { label: "Dashboard", tab: "dashboard", icon: LayoutDashboard },
+        { label: "My Complaints", tab: "tickets", icon: FileText },
+        { label: "Post Complaint", path: "/submit", icon: PlusCircle },
+        { label: "Analytics", tab: "analytics", icon: BarChart3 },
+        { label: "Logout", path: "/", icon: LogOut },
+      ];
+    }
+    if (role === "admin") {
+      return [
+        { label: "Dashboard", tab: "dashboard", icon: LayoutDashboard },
+        { label: "My Complaints", tab: "tickets", icon: FileText },
+        { label: "Post Complaint", path: "/submit", icon: PlusCircle },
+        { label: "Analytics", tab: "analytics", icon: BarChart3 },
+        { label: "Logout", path: "/", icon: LogOut },
+      ];
+    }
+    return [
+      { label: "Dashboard", tab: "dashboard", icon: LayoutDashboard },
+      { label: "My Complaints", tab: "tasks", icon: FileText },
+      { label: "Post Complaint", path: "/submit", icon: PlusCircle },
+      { label: "Analytics", tab: "history", icon: BarChart3 },
+      { label: "Logout", path: "/", icon: LogOut },
+    ];
+  }, [role]);
 
   return (
-    <div className="min-h-screen flex bg-background">
-      {/* Sidebar */}
-      <aside className="w-60 flex-shrink-0 flex flex-col" style={{ background: "hsl(var(--sidebar-background))" }}>
-        {/* Logo */}
-        <div className="p-5 border-b border-sidebar-border">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center">
-              <img
-                src="/logo.png"
-                alt="Fixora"
-                className="w-8 h-8 object-cover"
-                onError={(e) => {
-                  const img = e.currentTarget as HTMLImageElement;
-                  if (img.src.endsWith('/logo.png')) img.src = '/favicon.ico';
-                }}
-              />
-            </div>
-            <div>
-              <p className="text-white font-bold text-base leading-none">Fixora</p>
-              <p className="text-sidebar-foreground text-xs mt-0.5 opacity-70">Society Platform</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Nav */}
-        <nav className="flex-1 p-3 space-y-1">
-          {role === "resident" ? (
-            <div>
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
+        <div className="mx-auto flex h-14 items-center justify-between px-4 lg:px-8">
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild>
               <button
-                onClick={() => setMenuOpen((s) => !s)}
-                className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-white transition-all duration-150"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card"
+                aria-label="Open menu"
               >
-                <span className="flex items-center gap-3">
-                  <Menu className="w-4 h-4" />
-                  Menu
-                </span>
-                <ChevronDown className={`w-4 h-4 transform ${menuOpen ? "rotate-180" : "rotate-0"}`} />
+                <Menu className="h-5 w-5" />
               </button>
-
-              {menuOpen && (
-                <div className="mt-2 space-y-1 pl-3">
-                  {residentNav.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = item.tab ? activeTab === item.tab : false;
-                    return (
-                      <button
-                        key={item.label}
-                        onClick={() => {
-                          if (item.path) {
-                            navigate(item.path);
-                          } else if (item.tab && onTabChange) {
-                            onTabChange(item.tab);
-                          }
-                        }}
-                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
-                          isActive
-                            ? "bg-sidebar-accent text-white"
-                            : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-white"
-                        }`}
-                      >
-                        <Icon className="w-4 h-4 flex-shrink-0" />
-                        {item.label}
-                      </button>
-                    );
-                  })}
+            </SheetTrigger>
+            <SheetContent side="left" className="w-72">
+              <div className="mb-6 flex items-center gap-3 border-b border-border pb-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-bold">
+                  {userName[0]}
                 </div>
-              )}
-            </div>
-          ) : (
-            navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = item.tab ? activeTab === item.tab : false;
-              return (
-                <button
-                  key={item.label}
-                  onClick={() => {
-                    if (item.path) {
-                      navigate(item.path);
-                    } else if (item.tab && onTabChange) {
-                      onTabChange(item.tab);
-                    }
-                  }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
-                    isActive
-                      ? "bg-sidebar-accent text-white"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-white"
-                  }`}
-                >
-                  <Icon className="w-4 h-4 flex-shrink-0" />
-                  {item.label}
-                </button>
-              );
-            })
-          )}
-        </nav>
+                <div>
+                  <p className="font-semibold text-foreground">{userName}</p>
+                  <p className="text-xs capitalize text-muted-foreground">{role}</p>
+                </div>
+              </div>
+              <nav className="space-y-2">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const selected = item.tab ? activeTab === item.tab : location.pathname === item.path;
+                  return (
+                    <button
+                      key={item.label}
+                      onClick={() => {
+                        setOpen(false);
+                        if (item.path) {
+                          navigate(item.path);
+                          return;
+                        }
+                        if (item.tab && onTabChange) {
+                          onTabChange(item.tab);
+                        }
+                      }}
+                      className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+                        selected ? "bg-primary text-white" : "bg-card border border-border text-foreground"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </nav>
+            </SheetContent>
+          </Sheet>
 
-        {/* User */}
-        <div className="p-3 border-t border-sidebar-border">
-          <div className="flex items-center gap-3 px-2 py-2">
-            <div className={`w-8 h-8 ${roleColors[role]} rounded-full flex items-center justify-center flex-shrink-0`}>
-              <span className="text-white text-xs font-bold">{userName[0]}</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-white text-sm font-medium truncate">{userName}</p>
-              <p className="text-sidebar-foreground text-xs opacity-70">{roleLabel}</p>
-            </div>
-            <button
-              onClick={() => navigate("/")}
-              className="text-sidebar-foreground hover:text-white transition-colors"
-              title="Logout"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
+          <p className="text-sm font-semibold text-muted-foreground">Smart Complaint System</p>
+
+          <button
+            onClick={() => navigate("/profile")}
+            className="flex items-center gap-2 rounded-lg border border-border bg-card px-2 py-1.5"
+            title="Profile management"
+          >
+            <img
+              src="/logo.png"
+              alt="Logo"
+              className="h-5 w-5 rounded object-cover"
+              onError={(event) => {
+                const img = event.currentTarget as HTMLImageElement;
+                img.src = "/favicon.ico";
+              }}
+            />
+            <UserCircle2 className="h-4 w-4 text-muted-foreground" />
+          </button>
         </div>
-      </aside>
-
-      {/* Main content */}
-      <main className="flex-1 overflow-auto">
-        {children}
-      </main>
+      </header>
+      <main>{children}</main>
     </div>
   );
 }

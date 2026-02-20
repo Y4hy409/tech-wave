@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Home, Shield, Wrench, ArrowRight, Eye, EyeOff, ArrowLeft, CheckCircle } from "lucide-react";
 import heroBuilding from "@/assets/hero-building.jpg";
+import { formatDisplayName, writeSessionUser } from "@/lib/userProfile";
 
 type Role = "resident" | "admin" | "staff";
 
@@ -56,10 +57,14 @@ export default function SignUp() {
     setError("");
     setLoading(true);
     setTimeout(() => {
+      writeSessionUser({
+        name: formatDisplayName(username),
+        role,
+      });
       setLoading(false);
       setSuccess(true);
-      setTimeout(() => navigate(config.destination), 1200);
-    }, 1000);
+      setTimeout(() => navigate(config.destination), 350);
+    }, 300);
   };
 
   return (

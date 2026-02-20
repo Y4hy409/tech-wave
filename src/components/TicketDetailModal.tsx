@@ -20,6 +20,7 @@ interface Ticket {
   slaTotalHours: number;
   description: string;
   timeline: TimelineEvent[];
+  images?: string[];
   rating?: number;
 }
 
@@ -76,6 +77,22 @@ export function TicketDetailModal({ ticket, onClose }: TicketDetailModalProps) {
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Description</p>
             <p className="text-sm text-foreground leading-relaxed">{ticket.description}</p>
           </div>
+
+          {!!ticket.images?.length && (
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Images</p>
+              <div className="grid grid-cols-2 gap-2">
+                {ticket.images.map((image, index) => (
+                  <img
+                    key={`${ticket.id}-img-${index}`}
+                    src={image}
+                    alt={`Complaint ${index + 1}`}
+                    className="h-28 w-full rounded-lg border border-border object-cover"
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* SLA */}
           {(ticket.status === "open" || ticket.status === "in_progress" || ticket.status === "escalated") && (

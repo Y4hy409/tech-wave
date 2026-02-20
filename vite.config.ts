@@ -11,6 +11,13 @@ export default defineConfig(({ mode }) => ({
     hmr: {
       overlay: false,
     },
+    proxy: {
+      "/auth": "http://127.0.0.1:8000",
+      "/complaints": "http://127.0.0.1:8000",
+      "/dashboard": "http://127.0.0.1:8000",
+      "/analytics": "http://127.0.0.1:8000",
+      "/webhook": "http://127.0.0.1:8000",
+    },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {
