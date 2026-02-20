@@ -150,12 +150,10 @@ export default function ResidentDashboard() {
   );
 
   const castVote = async (complaint: BackendComplaint, vote: "up" | "down") => {
-    const current = complaint.voters_list?.find((entry) => entry.resident_id === residentId)?.vote_type;
-    const nextVote = current === vote ? "remove" : vote;
     const response = await fetch(`/complaints/${complaint._id}/vote`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ vote_type: nextVote, resident_id: residentId }),
+      body: JSON.stringify({ vote_type: vote, resident_id: residentId }),
     });
     if (!response.ok) return;
     const updated = (await response.json()) as BackendComplaint;
@@ -229,7 +227,7 @@ export default function ResidentDashboard() {
     </div>
   );
 
-  const communityComplaints = complaints.slice(0, 8);
+  const communityComplaints = complaints;
 
   if (loading) {
     return (
@@ -268,8 +266,8 @@ export default function ResidentDashboard() {
           </div>
         ) : activeTab === "tickets" ? (
           <div className="space-y-4">
-            <h1 className="text-2xl font-bold text-foreground">My Tickets</h1>
-            {renderTicketList(myComplaints)}
+            <h1 className="text-2xl font-bold text-foreground">All Posted Complaints</h1>
+            {renderTicketList(complaints)}
           </div>
         ) : (
           <>

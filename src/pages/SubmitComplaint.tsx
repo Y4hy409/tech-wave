@@ -50,6 +50,8 @@ export default function SubmitComplaint() {
   const [aiCategory, setAiCategory] = useState("");
   const [aiPriority, setAiPriority] = useState("");
   const [isDuplicate, setIsDuplicate] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState("Your ticket has been created and assigned.");
+  const [submittedTicketId, setSubmittedTicketId] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
   const apartmentId = "APT1";
   const residentId =
@@ -96,6 +98,8 @@ export default function SubmitComplaint() {
 
     if (!navigator.onLine) {
       await queueOfflineComplaint(payload);
+      setSubmitMessage("Saved offline. It will auto-sync when internet is back.");
+      setSubmittedTicketId("OFFLINE-QUEUED");
       setTimeout(() => setStep("success"), 600);
       return;
     }
@@ -116,14 +120,20 @@ export default function SubmitComplaint() {
       if (!response.ok) {
         throw new Error("Complaint submit failed");
       }
+      const result = (await response.json()) as {
+        ticket_id?: string;
+        message?: string;
+      };
+      setSubmittedTicketId(result.ticket_id || "FX-PENDING");
+      setSubmitMessage(result.message || "Your ticket has been created and assigned.");
       setStep("success");
     } catch {
       await queueOfflineComplaint({ ...payload, is_synced: false });
+      setSubmitMessage("Server unavailable. Complaint queued offline and will sync automatically.");
+      setSubmittedTicketId("OFFLINE-QUEUED");
       setStep("success");
     }
   };
-
-  const ticketId = "FX-" + Math.floor(2400 + Math.random() * 100);
 
   if (step === "success") {
     return (
@@ -134,8 +144,8 @@ export default function SubmitComplaint() {
               <CheckCircle className="w-10 h-10 text-success" />
             </div>
             <h2 className="text-2xl font-bold text-foreground mb-2">Complaint Submitted!</h2>
-            <p className="text-muted-foreground mb-1">Your ticket has been created and assigned.</p>
-            <p className="text-sm font-mono text-accent font-bold mb-6">{ticketId}</p>
+            <p className="text-muted-foreground mb-1">{submitMessage}</p>
+            <p className="text-sm font-mono text-accent font-bold mb-6">{submittedTicketId}</p>
             <div className="bg-card border border-border rounded-xl p-4 text-left mb-6 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Category</span>
